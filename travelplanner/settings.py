@@ -13,17 +13,20 @@ https://docs.djangoproject.com/en/5.2/ref/settings/
 
 import os
 from pathlib import Path
+from dotenv import load_dotenv
 from django.contrib.messages import constants as messages
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
+load_dotenv(BASE_DIR / ".env")
 
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/5.2/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = 'django-insecure-!dp&f$jdcyit-kit984i+w94^=jpr+j&f=n62gh(ufom$b!0z@'
+
+SECRET_KEY = os.getenv("SECRET_KEY")
 
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
@@ -132,21 +135,21 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 # OpenWeatherMap API (Free tier: 1000 calls/day)
 # Get from: https://home.openweathermap.org/api_keys
-OPENWEATHER_API_KEY = "537a1d4d964f08473d83cd9b35383db0"  # Replace with your free key
+OPENWEATHER_API_KEY = os.getenv("OPENWEATHER_API_KEY")  # Replace with your free key
 
 # Geoapify API (Free tier: 3000 calls/day)  
 # Get from: https://www.geoapify.com/get-started-with-maps-api
-GEOAPIFY_API_KEY = "d14575f899f74b63af84508ba9af46cd"  # Replace with your free key
+GEOAPIFY_API_KEY = os.getenv("GEOAPIFY_API_KEY")  # Replace with your free key
 
 # No AI API - Using local itinerary generation
 # Email Configuration (Use Gmail SMTP - Free)
-EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
-EMAIL_HOST = 'smtp.gmail.com'
-EMAIL_PORT = 587
-EMAIL_USE_TLS = True
-EMAIL_HOST_USER = 'aryahanumanthu@gmail.com'  # Your Gmail
-EMAIL_HOST_PASSWORD = 'sbdf yljo meqo thsi'  # Gmail App Password
-DEFAULT_FROM_EMAIL = 'TravelPlanner aryahanumanthu@gmail.com'
+EMAIL_BACKEND = os.getenv("EMAIL_BACKEND")
+EMAIL_HOST = os.getenv("EMAIL_HOST")
+EMAIL_PORT = os.getenv("EMAIL_PORT")
+EMAIL_USE_TLS = os.getenv("EMAIL_USE_TLS")
+EMAIL_HOST_USER = os.getenv("EMAIL_HOST_USER")
+EMAIL_HOST_PASSWORD = os.getenv("EMAIL_HOST_PASSWORD")
+DEFAULT_FROM_EMAIL = os.getenv("DEFAULT_FROM_EMAIL")
 
 # No SMS API - Using WhatsApp only (free)
 

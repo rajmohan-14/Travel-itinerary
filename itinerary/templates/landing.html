@@ -1,0 +1,1005 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TravelPlanner - AI-Powered Trip Planning</title>
+    <!-- Bootstrap CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --primary-color: #1e40af;
+            --secondary-color: #1e3a8a;
+            --accent-color: #3b82f6;
+            --light-color: #f8f9fa;
+            --dark-color: #0f172a;
+            --gradient-primary: linear-gradient(135deg, #1e40af 0%, #1e3a8a 100%);
+            --gradient-secondary: linear-gradient(135deg, #3b82f6 0%, #1e40af 100%);
+            --gradient-accent: linear-gradient(135deg, #60a5fa 0%, #3b82f6 100%);
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Poppins', sans-serif;
+            background-color: var(--dark-color);
+            color: var(--light-color);
+            overflow-x: hidden;
+        }
+
+        .hero-section {
+            min-height: 100vh;
+            background: linear-gradient(rgba(15, 23, 42, 0.8), rgba(15, 23, 42, 0.9)), 
+                        url('https://images.unsplash.com/photo-1488646953014-85cb44e25828?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1935&q=80') no-repeat center center/cover;
+            display: flex;
+            align-items: center;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .hero-section::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: var(--gradient-primary);
+            opacity: 0.2;
+            z-index: -1;
+        }
+
+        .hero-content {
+            z-index: 2;
+        }
+
+        .logo {
+            font-weight: 700;
+            font-size: 1.8rem;
+            color: white;
+            text-decoration: none;
+            display: flex;
+            align-items: center;
+        }
+
+        .logo-icon {
+            margin-right: 10px;
+            font-size: 2rem;
+            color: var(--accent-color);
+        }
+
+        .text-gradient {
+            background: var(--gradient-secondary);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .btn-primary-custom {
+            background: var(--gradient-primary);
+            border: none;
+            padding: 12px 30px;
+            border-radius: 50px;
+            font-weight: 600;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 15px rgba(30, 64, 175, 0.3);
+        }
+
+        .btn-primary-custom:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 8px 25px rgba(30, 64, 175, 0.4);
+        }
+
+        .btn-secondary-custom {
+            background: transparent;
+            border: 2px solid var(--accent-color);
+            color: var(--accent-color);
+            padding: 12px 30px;
+            border-radius: 50px;
+            font-weight: 600;
+            transition: all 0.3s ease;
+        }
+
+        .btn-secondary-custom:hover {
+            background: var(--accent-color);
+            color: var(--dark-color);
+            transform: translateY(-3px);
+        }
+
+        .section-title {
+            font-weight: 700;
+            margin-bottom: 1rem;
+        }
+
+        .section-subtitle {
+            color: #adb5bd;
+            margin-bottom: 3rem;
+        }
+
+        .feature-card {
+            background: rgba(255, 255, 255, 0.05);
+            backdrop-filter: blur(10px);
+            border-radius: 15px;
+            padding: 2rem;
+            height: 100%;
+            transition: all 0.3s ease;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .feature-card:hover {
+            transform: translateY(-10px);
+            box-shadow: 0 15px 30px rgba(0, 0, 0, 0.2);
+            border-color: rgba(30, 64, 175, 0.3);
+        }
+
+        .feature-icon {
+            width: 70px;
+            height: 70px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-bottom: 1.5rem;
+            background: var(--gradient-primary);
+            box-shadow: 0 5px 15px rgba(30, 64, 175, 0.3);
+        }
+
+        .feature-icon i {
+            font-size: 1.8rem;
+            color: white;
+        }
+
+        .badge-custom {
+            background: var(--gradient-accent);
+            color: white;
+            padding: 5px 15px;
+            border-radius: 20px;
+            font-size: 0.8rem;
+            font-weight: 500;
+        }
+
+        .how-it-works-section {
+            background: linear-gradient(rgba(15, 23, 42, 0.9), rgba(15, 23, 42, 0.9)), 
+                        url('https://images.unsplash.com/photo-1552733407-5d5c46c3bb3b?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1920&q=80') no-repeat center center/cover;
+            padding: 100px 0;
+        }
+
+        .step-card {
+            text-align: center;
+            padding: 2rem 1rem;
+        }
+
+        .step-icon {
+            width: 120px;
+            height: 120px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto 1.5rem;
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            position: relative;
+            transition: all 0.3s ease;
+        }
+
+        .step-icon:hover {
+            transform: scale(1.05);
+            background: var(--gradient-primary);
+        }
+
+        .step-icon i {
+            font-size: 3rem;
+            color: var(--accent-color);
+        }
+
+        .step-icon:hover i {
+            color: white;
+        }
+
+        .step-number {
+            position: absolute;
+            top: -10px;
+            right: -10px;
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background: var(--gradient-accent);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            box-shadow: 0 4px 10px rgba(59, 130, 246, 0.4);
+        }
+
+        .popular-destinations-section {
+            padding: 100px 0;
+            background: rgba(15, 23, 42, 0.95);
+        }
+
+        .destination-card {
+            border-radius: 15px;
+            overflow: hidden;
+            position: relative;
+            height: 300px;
+            margin-bottom: 30px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+            transition: all 0.3s ease;
+        }
+
+        .destination-card:hover {
+            transform: translateY(-10px);
+            box-shadow: 0 15px 40px rgba(0, 0, 0, 0.4);
+        }
+
+        .destination-img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            transition: transform 0.5s ease;
+        }
+
+        .destination-card:hover .destination-img {
+            transform: scale(1.1);
+        }
+
+        .destination-overlay {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background: linear-gradient(to top, rgba(15, 23, 42, 0.9), transparent);
+            padding: 30px 20px 20px;
+            color: white;
+        }
+
+        .destination-price {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            background: var(--gradient-accent);
+            color: white;
+            padding: 8px 15px;
+            border-radius: 20px;
+            font-weight: 600;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
+        }
+
+        .team-section {
+            padding: 100px 0;
+            background: rgba(15, 23, 42, 0.95);
+        }
+
+        .team-card {
+            text-align: center;
+            padding: 2rem 1rem;
+        }
+
+        .team-img {
+            width: 180px;
+            height: 180px;
+            border-radius: 50%;
+            margin: 0 auto 1.5rem;
+            border: 5px solid var(--primary-color);
+            overflow: hidden;
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
+            transition: all 0.3s ease;
+        }
+
+        .team-img:hover {
+            transform: scale(1.05);
+            border-color: var(--accent-color);
+        }
+
+        .team-img img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        .social-links {
+            display: flex;
+            justify-content: center;
+            gap: 10px;
+            margin-top: 1rem;
+        }
+
+        .social-links a {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: rgba(255, 255, 255, 0.1);
+            color: var(--light-color);
+            transition: all 0.3s ease;
+        }
+
+        .social-links a:hover {
+            background: var(--gradient-primary);
+            transform: translateY(-3px);
+        }
+
+        .stats-section {
+            padding: 80px 0;
+            background: var(--gradient-primary);
+        }
+
+        .stat-card {
+            text-align: center;
+            padding: 2rem 1rem;
+        }
+
+        .stat-number {
+            font-size: 3.5rem;
+            font-weight: 700;
+            margin-bottom: 0.5rem;
+        }
+
+        .testimonial-card {
+            background: rgba(255, 255, 255, 0.05);
+            backdrop-filter: blur(10px);
+            border-radius: 15px;
+            padding: 2rem;
+            height: 100%;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .testimonial-img {
+            width: 60px;
+            height: 60px;
+            border-radius: 50%;
+            object-fit: cover;
+            margin-right: 1rem;
+        }
+
+        .stars {
+            color: #ffc107;
+        }
+
+        .cta-section {
+            padding: 100px 0;
+            background: linear-gradient(rgba(15, 23, 42, 0.9), rgba(15, 23, 42, 0.9)), 
+                        url('https://images.unsplash.com/photo-1539635278303-d4002c07eae3?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1920&q=80') no-repeat center center/cover;
+        }
+
+        .cta-card {
+            background: rgba(255, 255, 255, 0.05);
+            backdrop-filter: blur(10px);
+            border-radius: 20px;
+            padding: 3rem;
+            text-align: center;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.2);
+        }
+
+        footer {
+            background: #050510;
+            padding: 60px 0 30px;
+        }
+
+        .footer-links h5 {
+            margin-bottom: 1.5rem;
+            font-weight: 600;
+        }
+
+        .footer-links ul {
+            list-style: none;
+            padding: 0;
+        }
+
+        .footer-links li {
+            margin-bottom: 0.8rem;
+        }
+
+        .footer-links a {
+            color: #adb5bd;
+            text-decoration: none;
+            transition: all 0.3s ease;
+        }
+
+        .footer-links a:hover {
+            color: var(--accent-color);
+            padding-left: 5px;
+        }
+
+        .copyright {
+            border-top: 1px solid rgba(255, 255, 255, 0.1);
+            padding-top: 30px;
+            margin-top: 50px;
+            text-align: center;
+            color: #6c757d;
+        }
+
+        /* Animations */
+        @keyframes float {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-20px); }
+        }
+
+        .floating {
+            animation: float 6s ease-in-out infinite;
+        }
+
+        @keyframes pulse {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+            100% { transform: scale(1); }
+        }
+
+        .pulse {
+            animation: pulse 3s infinite;
+        }
+
+        /* Responsive adjustments */
+        @media (max-width: 768px) {
+            .hero-section {
+                padding: 100px 0;
+                text-align: center;
+            }
+            
+            .display-3 {
+                font-size: 2.5rem;
+            }
+            
+            .step-icon {
+                width: 100px;
+                height: 100px;
+            }
+            
+            .step-icon i {
+                font-size: 2.5rem;
+            }
+            
+            .team-img {
+                width: 150px;
+                height: 150px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- Header Section -->
+    <header class="hero-section">
+        <div class="container">
+            <div class="row align-items-center">
+                <div class="col-lg-6 hero-content">
+                    <a href="#" class="logo mb-4 d-flex align-items-center text-decoration-none">
+
+    <!-- Logo Image -->
+    <img src="https://i.postimg.cc/02sbfNTz/travel-logo.jpg"
+         alt="Travel Logo"
+         class="me-2"
+         style="height: 40px; width: 40px; object-fit: cover; border-radius: 6px;">
+
+    <!-- Logo Text -->
+    <span class="fw-bold h5 mb-0">Travel Smart</span>
+
+</a>
+
+                    <h1 class="display-3 fw-bold mb-4 text-white floating">Plan Your Perfect Trip</h1>
+                    <p class="lead mb-4 fs-5 text-light">AI-powered travel itinerary planner with weather insights, attraction recommendations, and smart planning tools for the modern traveler.</p>
+                    <div class="d-flex flex-wrap gap-3 mt-4">
+                        <a href="/register/" class="btn btn-primary-custom pulse">
+                            <i class="fas fa-rocket me-2"></i>Get Started 
+                        </a>
+                        <a href="#features" class="btn btn-secondary-custom">
+                            <i class="fas fa-play-circle me-2"></i>How It Works
+                        </a>
+                    </div>
+                    <div class="mt-4">
+                        <small class="text-light"><i class="fas fa-shield-alt me-2"></i>Secure & Private • <i class="fas fa-clock me-2"></i>Instant Setup • <i class="fas fa-star me-2"></i>No Credit Card</small>
+                    </div>
+                </div>
+                <div class="col-lg-6 text-center mt-5 mt-lg-0">
+                    <div class="pulse">
+                        <img src="https://images.unsplash.com/photo-1542314831-068cd1dbfeeb?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1170&q=80" alt="Travel Planning" class="img-fluid rounded-3 shadow-lg" style="max-height: 500px;">
+                    </div>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- Features Section -->
+    <section id="features" class="py-5">
+        <div class="container">
+            <div class="row justify-content-center mb-5">
+                <div class="col-lg-8 text-center">
+                    <h2 class="section-title display-5 fw-bold text-gradient">Why Choose TravelPlanner?</h2>
+                    <p class="section-subtitle lead">Everything you need to plan the perfect journey in one intelligent platform</p>
+                </div>
+            </div>
+            <div class="row g-4">
+                <div class="col-md-6 col-lg-4">
+                    <div class="feature-card">
+                        <div class="feature-icon">
+                            <i class="fas fa-route"></i>
+                        </div>
+                        <h4 class="fw-bold mb-3">Smart Itineraries</h4>
+                        <p class="text-light mb-3">AI-generated daily plans based on your preferences, budget constraints, and travel style with optimized routes.</p>
+                        <div class="mt-3">
+                            <span class="badge-custom">AI Powered</span>
+                            <span class="badge-custom ms-2">Optimized Routes</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-6 col-lg-4">
+                    <div class="feature-card">
+                        <div class="feature-icon">
+                            <i class="fas fa-cloud-sun"></i>
+                        </div>
+                        <h4 class="fw-bold mb-3">Live Weather Integration</h4>
+                        <p class="text-light mb-3">Real-time weather forecasts and conditions for your exact destination with activity recommendations.</p>
+                        <div class="mt-3">
+                            <span class="badge-custom">Real-time</span>
+                            <span class="badge-custom ms-2">Accurate Forecasts</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-6 col-lg-4">
+                    <div class="feature-card">
+                        <div class="feature-icon">
+                            <i class="fas fa-map-marker-alt"></i>
+                        </div>
+                        <h4 class="fw-bold mb-3">Nearby Places Discovery</h4>
+                        <p class="text-light mb-3">Discover top attractions, hotels, restaurants, and hidden gems near your destination with ratings.</p>
+                        <div class="mt-3">
+                            <span class="badge-custom">Local Guide</span>
+                            <span class="badge-custom ms-2">Verified Reviews</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-6 col-lg-4">
+                    <div class="feature-card">
+                        <div class="feature-icon">
+                            <i class="fas fa-wallet"></i>
+                        </div>
+                        <h4 class="fw-bold mb-3">Budget Management</h4>
+                        <p class="text-light mb-3">Set your travel budget and get recommendations that fit your financial plan with cost tracking.</p>
+                        <div class="mt-3">
+                            <span class="badge-custom">Cost Tracking</span>
+                            <span class="badge-custom ms-2">Smart Savings</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-6 col-lg-4">
+                    <div class="feature-card">
+                        <div class="feature-icon">
+                            <i class="fas fa-share-alt"></i>
+                        </div>
+                        <h4 class="fw-bold mb-3">Easy Sharing</h4>
+                        <p class="text-light mb-3">Share your itineraries with travel companions via email, WhatsApp, or direct links with real-time updates.</p>
+                        <div class="mt-3">
+                            <span class="badge-custom">Multi-Platform</span>
+                            <span class="badge-custom ms-2">Real-time Sync</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-6 col-lg-4">
+                    <div class="feature-card">
+                        <div class="feature-icon">
+                            <i class="fas fa-mobile-alt"></i>
+                        </div>
+                        <h4 class="fw-bold mb-3">Mobile Friendly</h4>
+                        <p class="text-light mb-3">Access your travel plans on any device with our responsive design and dedicated mobile app.</p>
+                        <div class="mt-3">
+                            <span class="badge-custom">Cross-Platform</span>
+                            <span class="badge-custom ms-2">Offline Access</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Popular Destinations Section -->
+    <section id="destinations" class="popular-destinations-section">
+        <div class="container">
+            <div class="row justify-content-center mb-5">
+                <div class="col-lg-8 text-center">
+                    <h2 class="section-title display-5 fw-bold text-gradient">Popular Destinations</h2>
+                    <p class="section-subtitle lead">Explore our most sought-after travel destinations around the world</p>
+                </div>
+            </div>
+            <div class="row g-4">
+                <div class="col-md-6 col-lg-3">
+                    <div class="destination-card">
+                        <img src="https://images.unsplash.com/photo-1537996194471-e657df975ab4?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1038&q=80" alt="Bali, Indonesia" class="destination-img">
+                        <div class="destination-overlay">
+                            <h4 class="fw-bold">Bali, Indonesia</h4>
+                            <p class="mb-2">Tropical paradise with stunning beaches and rich culture</p>
+                            <div class="stars mb-2">
+                                <i class="fas fa-star"></i>
+                                <i class="fas fa-star"></i>
+                                <i class="fas fa-star"></i>
+                                <i class="fas fa-star"></i>
+                                <i class="fas fa-star-half-alt"></i>
+                            </div>
+                        </div>
+                        <div class="destination-price">₹899</div>
+                    </div>
+                </div>
+                <div class="col-md-6 col-lg-3">
+                    <div class="destination-card">
+                        <img src="https://images.unsplash.com/photo-1526481280693-3bfa7568e0f3?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1171&q=80" alt="Santorini, Greece" class="destination-img">
+                        <div class="destination-overlay">
+                            <h4 class="fw-bold">Santorini, Greece</h4>
+                            <p class="mb-2">Iconic white buildings with breathtaking sunset views</p>
+                            <div class="stars mb-2">
+                                <i class="fas fa-star"></i>
+                                <i class="fas fa-star"></i>
+                                <i class="fas fa-star"></i>
+                                <i class="fas fa-star"></i>
+                                <i class="fas fa-star"></i>
+                            </div>
+                        </div>
+                        <div class="destination-price">₹1,299</div>
+                    </div>
+                </div>
+                <div class="col-md-6 col-lg-3">
+                    <div class="destination-card">
+                        <img src="https://images.unsplash.com/photo-1562602831-457e1fe44c84?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1170&q=80" alt="Kyoto, Japan" class="destination-img">
+                        <div class="destination-overlay">
+                            <h4 class="fw-bold">Kyoto, Japan</h4>
+                            <p class="mb-2">Ancient temples, traditional gardens, and cherry blossoms</p>
+                            <div class="stars mb-2">
+                                <i class="fas fa-star"></i>
+                                <i class="fas fa-star"></i>
+                                <i class="fas fa-star"></i>
+                                <i class="fas fa-star"></i>
+                                <i class="fas fa-star-half-alt"></i>
+                            </div>
+                        </div>
+                        <div class="destination-price">₹1,199</div>
+                    </div>
+                </div>
+                <div class="col-md-6 col-lg-3">
+                    <div class="destination-card">
+                        <img src="https://images.unsplash.com/photo-1506970843582-f75c0c8e4b74?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1170&q=80" alt="Paris, France" class="destination-img">
+                        <div class="destination-overlay">
+                            <h4 class="fw-bold">Paris, France</h4>
+                            <p class="mb-2">The city of lights with iconic landmarks and romance</p>
+                            <div class="stars mb-2">
+                                <i class="fas fa-star"></i>
+                                <i class="fas fa-star"></i>
+                                <i class="fas fa-star"></i>
+                                <i class="fas fa-star"></i>
+                                <i class="fas fa-star"></i>
+                            </div>
+                        </div>
+                        <div class="destination-price">₹1,099</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- How It Works Section -->
+    <section id="how-it-works" class="how-it-works-section">
+        <div class="container">
+            <div class="row justify-content-center mb-5">
+                <div class="col-lg-8 text-center">
+                    <h2 class="section-title display-5 fw-bold text-gradient">How It Works</h2>
+                    <p class="section-subtitle lead">Four simple steps to transform your travel dreams into reality</p>
+                </div>
+            </div>
+            <div class="row g-4">
+                <div class="col-md-6 col-lg-3">
+                    <div class="step-card">
+                        <div class="step-icon">
+                            <i class="fas fa-user-plus"></i>
+                            <div class="step-number">1</div>
+                        </div>
+                        <h4 class="fw-bold text-white mb-3">Create Account</h4>
+                        <p class="text-light">Quick signup with secure email verification. Set up your profile and travel preferences in minutes.</p>
+                    </div>
+                </div>
+                <div class="col-md-6 col-lg-3">
+                    <div class="step-card">
+                        <div class="step-icon">
+                            <i class="fas fa-map-marked-alt"></i>
+                            <div class="step-number">2</div>
+                        </div>
+                        <h4 class="fw-bold text-white mb-3">Plan Your Trip</h4>
+                        <p class="text-light">Enter destination, travel dates, budget, interests, and any special requirements for your journey.</p>
+                    </div>
+                </div>
+                <div class="col-md-6 col-lg-3">
+                    <div class="step-card">
+                        <div class="step-icon">
+                            <i class="fas fa-robot"></i>
+                            <div class="step-number">3</div>
+                        </div>
+                        <h4 class="fw-bold text-white mb-3">AI Itinerary Generation</h4>
+                        <p class="text-light">Our AI creates a personalized daily plan with activities, dining, and accommodation recommendations.</p>
+                    </div>
+                </div>
+                <div class="col-md-6 col-lg-3">
+                    <div class="step-card">
+                        <div class="step-icon">
+                            <i class="fas fa-ticket-alt"></i>
+                            <div class="step-number">4</div>
+                        </div>
+                        <h4 class="fw-bold text-white mb-3">Book & Share</h4>
+                        <p class="text-light">Get digital tickets via email & WhatsApp. Share your itinerary with travel companions instantly.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Stats Section -->
+    <section class="stats-section">
+        <div class="container">
+            <div class="row g-4 text-center">
+                <div class="col-md-3">
+                    <div class="stat-card">
+                        <h3 class="stat-number">10K+</h3>
+                        <p class="fs-5 mb-0">Happy Travelers</p>
+                        <small class="text-light">From 50+ countries</small>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="stat-card">
+                        <h3 class="stat-number">50+</h3>
+                        <p class="fs-5 mb-0">Countries Covered</p>
+                        <small class="text-light">Destinations worldwide</small>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="stat-card">
+                        <h3 class="stat-number">24/7</h3>
+                        <p class="fs-5 mb-0">Support Available</p>
+                        <small class="text-light">Always here to help</small>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="stat-card">
+                        <h3 class="stat-number">4.9★</h3>
+                        <p class="fs-5 mb-0">Rated Service</p>
+                        <small class="text-light">Based on 2,500+ reviews</small>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Team Section -->
+    <section id="team" class="team-section">
+        <div class="container">
+            <div class="row justify-content-center mb-5">
+                <div class="col-lg-8 text-center">
+                    <h2 class="section-title display-5 fw-bold text-gradient">Meet Our Team</h2>
+                    <p class="section-subtitle lead">The passionate minds behind TravelPlanner's innovative platform</p>
+                </div>
+            </div>
+            <div class="row g-4">
+                <div class="col-md-6 col-lg-3">
+                    <div class="team-card">
+                        <div class="team-img">
+                            <img src="https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=687&q=80" alt="Alex Johnson">
+                        </div>
+                        <h4 class="fw-bold text-white">Alex Johnson</h4>
+                        <p class="text-accent">CEO & Founder</p>
+                        
+                        
+                    </div>
+                </div>
+                <div class="col-md-6 col-lg-3">
+                    <div class="team-card">
+                        <div class="team-img">
+                            <img src="https://images.unsplash.com/photo-1494790108755-2616b612b786?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=687&q=80" alt="Sarah Chen">
+                        </div>
+                        <h4 class="fw-bold text-white">Sarah Chen</h4>
+                        <p class="text-accent">CTO</p>
+                        
+                    </div>
+                </div>
+                <div class="col-md-6 col-lg-3">
+                    <div class="team-card">
+                        <div class="team-img">
+                            <img src="https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1170&q=80" alt="Michael Rodriguez">
+                        </div>
+                        <h4 class="fw-bold text-white">Michael Rodriguez</h4>
+                        <p class="text-accent">Head of Product</p>
+                       
+                    </div>
+                </div>
+                <div class="col-md-6 col-lg-3">
+                    <div class="team-card">
+                        <div class="team-img">
+                            <img src="https://images.unsplash.com/photo-1580489944761-15a19d654956?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=761&q=80" alt="Emma Wilson">
+                        </div>
+                        <h4 class="fw-bold text-white">Emma Wilson</h4>
+                        <p class="text-accent">Marketing Director</p>
+                        
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Testimonials Section -->
+    <section class="py-5">
+        <div class="container">
+            <div class="row justify-content-center mb-5">
+                <div class="col-lg-8 text-center">
+                    <h2 class="section-title display-5 fw-bold text-gradient">What Travelers Say</h2>
+                    <p class="section-subtitle lead">Join thousands of satisfied travelers who trust us for their perfect trips</p>
+                </div>
+            </div>
+            <div class="row g-4">
+                <div class="col-md-6 col-lg-4">
+                    <div class="testimonial-card">
+                        <div class="d-flex align-items-center mb-3">
+                            <img src="https://images.unsplash.com/photo-1438761681033-6461ffad8d80?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1170&q=80" alt="Sarah Johnson" class="testimonial-img">
+                            <div>
+                                <h6 class="fw-bold text-white mb-0">Sarah Johnson</h6>
+                                <small class="text-muted">Travel Enthusiast</small>
+                            </div>
+                        </div>
+                        <p class="text-light">"The AI itinerary saved me hours of planning! Perfect recommendations for my Bali trip with accurate weather forecasts that helped me pack appropriately."</p>
+                        <div class="stars">
+                            <i class="fas fa-star"></i>
+                            <i class="fas fa-star"></i>
+                            <i class="fas fa-star"></i>
+                            <i class="fas fa-star"></i>
+                            <i class="fas fa-star"></i>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-6 col-lg-4">
+                    <div class="testimonial-card">
+                        <div class="d-flex align-items-center mb-3">
+                            <img src="https://images.unsplash.com/photo-1500648767791-00dcc994a43e?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=687&q=80" alt="Mike Chen" class="testimonial-img">
+                            <div>
+                                <h6 class="fw-bold text-white mb-0">Mike Chen</h6>
+                                <small class="text-muted">Business Traveler</small>
+                            </div>
+                        </div>
+                        <p class="text-light">"Weather integration and hotel suggestions made my business trip seamless. The budget tracking feature helped me stay within company limits effortlessly."</p>
+                        <div class="stars">
+                            <i class="fas fa-star"></i>
+                            <i class="fas fa-star"></i>
+                            <i class="fas fa-star"></i>
+                            <i class="fas fa-star"></i>
+                            <i class="fas fa-star"></i>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-6 col-lg-4">
+                    <div class="testimonial-card">
+                        <div class="d-flex align-items-center mb-3">
+                            <img src="https://images.unsplash.com/photo-1544725176-7c40e5a71c5e?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1167&q=80" alt="Emma Davis" class="testimonial-img">
+                            <div>
+                                <h6 class="fw-bold text-white mb-0">Emma Davis</h6>
+                                <small class="text-muted">Family Traveler</small>
+                            </div>
+                        </div>
+                        <p class="text-light">"Perfect for family trips! The WhatsApp tickets made sharing plans so easy with my husband and kids. The kid-friendly activity suggestions were spot on!"</p>
+                        <div class="stars">
+                            <i class="fas fa-star"></i>
+                            <i class="fas fa-star"></i>
+                            <i class="fas fa-star"></i>
+                            <i class="fas fa-star"></i>
+                            <i class="fas fa-star"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Final CTA Section -->
+    <section class="cta-section">
+        <div class="container">
+            <div class="row justify-content-center">
+                <div class="col-lg-10">
+                    <div class="cta-card">
+                        <h2 class="display-5 fw-bold text-gradient mb-3">Ready to Start Your Journey?</h2>
+                        <p class="lead text-light mb-4">Join thousands of travelers who trust us for their perfect trips. Create your first itinerary in minutes!</p>
+                        <div class="d-flex flex-column flex-sm-row justify-content-center gap-3">
+                            <a href="#!" class="btn btn-primary-custom btn-lg px-5 py-3">
+                                <i class="fas fa-play-circle me-2"></i>Start Planning Now
+                            </a>
+                            <a href="#features" class="btn btn-secondary-custom btn-lg px-5 py-3">
+                                <i class="fas fa-info-circle me-2"></i>Learn More
+                            </a>
+                        </div>
+                        <div class="mt-4">
+                            <small class="text-muted"><i class="fas fa-lock me-2"></i>No credit card required • Free forever • Instant setup</small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Footer Section -->
+    <footer>
+        <div class="container">
+            <div class="row g-4">
+                <div class="col-lg-4">
+                    <a href="#" class="logo mb-3">
+                        <i class="fas fa-route logo-icon"></i>
+                        TravelPlanner
+                    </a>
+                    <p class="text-light mb-4">AI-powered travel itinerary planner with weather insights, attraction recommendations, and smart planning tools for the modern traveler.</p>
+                    <div class="social-links justify-content-start">
+                        <a href="#"><i class="fab fa-facebook-f"></i></a>
+                        <a href="#"><i class="fab fa-twitter"></i></a>
+                        <a href="#"><i class="fab fa-instagram"></i></a>
+                        <a href="#"><i class="fab fa-linkedin-in"></i></a>
+                        <a href="#"><i class="fab fa-youtube"></i></a>
+                    </div>
+                </div>
+                <div class="col-lg-2 col-md-4">
+                    <div class="footer-links">
+                        <h5>Product</h5>
+                        <ul>
+                            <li><a href="#">Features</a></li>
+                            <li><a href="#">Pricing</a></li>
+                            <li><a href="#">API</a></li>
+                            <li><a href="#">Integrations</a></li>
+                            <li><a href="#">Updates</a></li>
+                        </ul>
+                    </div>
+                </div>
+                <div class="col-lg-2 col-md-4">
+                    <div class="footer-links">
+                        <h5>Company</h5>
+                        <ul>
+                            <li><a href="#">About</a></li>
+                            <li><a href="#">Careers</a></li>
+                            <li><a href="#">Blog</a></li>
+                            <li><a href="#">Press</a></li>
+                            <li><a href="#">Partners</a></li>
+                        </ul>
+                    </div>
+                </div>
+                <div class="col-lg-2 col-md-4">
+                    <div class="footer-links">
+                        <h5>Support</h5>
+                        <ul>
+                            <li><a href="#">Help Center</a></li>
+                            <li><a href="#">Contact Us</a></li>
+                            <li><a href="#">Privacy Policy</a></li>
+                            <li><a href="#">Terms of Service</a></li>
+                            <li><a href="#">Status</a></li>
+                        </ul>
+                    </div>
+                </div>
+                <div class="col-lg-2">
+                    <div class="footer-links">
+                        <h5>Download</h5>
+                        <div class="d-flex flex-column gap-2">
+                            <a href="#" class="btn btn-outline-light btn-sm">
+                                <i class="fab fa-apple me-2"></i>App Store
+                            </a>
+                            <a href="#" class="btn btn-outline-light btn-sm">
+                                <i class="fab fa-google-play me-2"></i>Google Play
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="copyright">
+                <p>&copy; 2023 TravelPlanner. All rights reserved.</p>
+            </div>
+        </div>
+    </footer>
+
+    <!-- Bootstrap JS -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>

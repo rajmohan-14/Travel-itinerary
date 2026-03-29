@@ -510,6 +510,55 @@
         </div>
     </header>
 
+    <!-- My Trips – shown when logged in -->
+    {% if user.is_authenticated and trips %}
+    <section class="py-5" style="background:rgba(30,58,138,0.15);">
+        <div class="container">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <div>
+                    <h3 class="fw-bold text-white mb-1">Welcome back, {{ user.username }}! ✈️</h3>
+                    <p class="text-light mb-0">Your recent trips</p>
+                </div>
+                <a href="{% url 'dashboard' %}" class="btn btn-primary-custom">
+                    <i class="fas fa-plus me-2"></i>Plan New Trip
+                </a>
+            </div>
+            <div class="row g-3">
+                {% for trip in trips %}
+                <div class="col-md-6 col-lg-4">
+                    <div class="feature-card h-100">
+                        <div class="d-flex justify-content-between align-items-start mb-2">
+                            <h5 class="fw-bold text-white mb-0">{{ trip.destination }}</h5>
+                            {% if trip.is_booked %}<span class="badge bg-success">Booked</span>{% endif %}
+                        </div>
+                        <p class="text-light small mb-2">
+                            <i class="fas fa-calendar-alt me-1"></i>{{ trip.start_date }} → {{ trip.end_date }}
+                            <span class="ms-2 badge-custom">{{ trip.duration_days }}d</span>
+                        </p>
+                        <p class="text-light small mb-3">
+                            <i class="fas fa-wallet me-1"></i>{{ trip.formatted_budget }}
+                            {% if trip.currency != 'INR' %}<small class="text-muted ms-1">({{ trip.currency }})</small>{% endif %}
+                        </p>
+                        <a href="{% url 'trip_detail' trip.id %}" class="btn btn-sm btn-outline-light w-100">
+                            <i class="fas fa-eye me-1"></i>View Itinerary
+                        </a>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+    </section>
+    {% elif user.is_authenticated %}
+    <section class="py-4" style="background:rgba(30,58,138,0.15);">
+        <div class="container text-center">
+            <p class="text-light mb-2">You have no trips yet.</p>
+            <a href="{% url 'dashboard' %}" class="btn btn-primary-custom">
+                <i class="fas fa-plus me-2"></i>Plan Your First Trip
+            </a>
+        </div>
+    </section>
+    {% endif %}
+
     <!-- Features Section -->
     <section id="features" class="py-5">
         <div class="container">

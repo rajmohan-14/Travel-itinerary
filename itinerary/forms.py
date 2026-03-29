@@ -50,11 +50,13 @@ class OTPForm(forms.Form):
 class TripForm(forms.ModelForm):
     class Meta:
         model = Trip
-        fields = ['destination', 'start_date', 'end_date', 'budget', 'travelers', 'interests', 'phone_number']
+        fields = ['destination', 'start_date', 'end_date', 'budget', 'currency', 'travelers', 'interests', 'phone_number']
         widgets = {
             'destination': forms.TextInput(attrs={
                 'class': 'form-control',
-                'placeholder': 'e.g., Goa, India'
+                'placeholder': 'e.g., Goa, India',
+                'id': 'destination-input',
+                'autocomplete': 'off',
             }),
             'start_date': forms.DateInput(attrs={
                 'class': 'form-control',
@@ -66,7 +68,10 @@ class TripForm(forms.ModelForm):
             }),
             'budget': forms.NumberInput(attrs={
                 'class': 'form-control',
-                'placeholder': 'Total budget in Indian Rupees (₹)'
+                'placeholder': 'Total budget'
+            }),
+            'currency': forms.Select(attrs={
+                'class': 'form-select',
             }),
             'travelers': forms.NumberInput(attrs={
                 'class': 'form-control',
@@ -81,7 +86,7 @@ class TripForm(forms.ModelForm):
                 'placeholder': 'WhatsApp number (with country code)'
             }),
         }
-    
+
     def clean_budget(self):
         budget = self.cleaned_data.get('budget')
         if budget and budget < 0:

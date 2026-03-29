@@ -13,23 +13,34 @@ import requests
 import json
 import random
 import string
+import logging
 import urllib.parse
 
-from .forms import RegisterForm, OTPForm, TripForm
-from .models import UserOTP, Trip
+logger = logging.getLogger(__name__)
+
+from .forms import RegisterForm, OTPForm, TripForm, TripInviteForm
+from .models import UserOTP, Trip, TripInvite
 
 import os
 from dotenv import load_dotenv
-from django.conf import settings
 
 load_dotenv(settings.BASE_DIR / ".env")
 
-OPENWEATHER_API = os.getenv("OPENWEATHER_API")
-GEOAPIFY_API = os.getenv("GEOAPIFY_API")
+OPENWEATHER_API_KEY = os.getenv("OPENWEATHER_API_KEY") or os.getenv("OPENWEATHER_API_KEY")
+GEOAPIFY_API_KEY = os.getenv("GEOAPIFY_API_KEY") or os.getenv("GEOAPIFY_API_KEY")
 OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY")
 
+
+# ---------------------------------------------------------------------------
+# Authentication views
+# ---------------------------------------------------------------------------
+
 def landing_page(request):
-    return render(request, 'landing.html')
+    recent_trips = []
+    if request.user.is_authenticated:
+        recent_trips = Trip.objects.filter(user=request.user).order_by('-created_at')[:5]
+    return render(request, 'landing.html', {'recent_trips': recent_trips})
+
 
 def register_view(request):
     if request.method == 'POST':
@@ -40,14 +51,14 @@ def register_view(request):
             phone_number = form.cleaned_data.get('phone_number', '')
 
             user, created = User.objects.get_or_create(
-                username=username, 
+                username=username,
                 email=email,
                 defaults={'is_active': True}
             )
-            
+
             if phone_number:
                 request.session['phone_number'] = phone_number
-            
+
             otp_obj, _ = UserOTP.objects.get_or_create(user=user)
             otp = otp_obj.generate_otp()
 
@@ -128,13 +139,18 @@ def resend_otp_view(request):
         return redirect('register')
 
 
-def generate_itinerary_with_ai(destination, days, budget, travelers, interests):
+# ---------------------------------------------------------------------------
+# AI itinerary generation
+# ---------------------------------------------------------------------------
+
+def generate_itinerary_with_ai(destination, days, budget, travelers, interests, currency='INR'):
     """Generate travel itinerary using OpenRouter AI"""
-    
+
+    budget_str = f"{budget} {currency}" if budget else "unspecified"
     prompt = f"""
-    Create a detailed {days}-day travel itinerary for {destination} for {travelers} traveler(s) with a budget of ₹{budget:,.2f} Indian Rupees.
+    Create a detailed {days}-day travel itinerary for {destination} for {travelers} traveler(s) with a budget of {budget_str}.
     Interests: {interests}
-    
+
     Please provide the itinerary in this exact JSON format:
     {{
         "itinerary": [
@@ -146,51 +162,45 @@ def generate_itinerary_with_ai(destination, days, budget, travelers, interests):
                         "time": "09:00 AM",
                         "activity": "Activity description",
                         "location": "Location name",
-                        "cost": "₹500",
+                        "cost": 500,
                         "duration": "2 hours",
-                        "type": "sightseeing/food/adventure/etc"
+                        "type": "sightseeing"
                     }}
                 ],
-                "total_cost": "₹2,500"
+                "total_cost": 2500
             }}
         ],
         "summary": {{
-            "total_estimated_cost": "₹{budget:,.2f}",
+            "total_estimated_cost": {budget},
             "best_transportation": "Recommended transport",
             "tips": ["Tip 1", "Tip 2"],
             "must_see": ["Place 1", "Place 2"]
         }}
     }}
     """
-    
+
     try:
         headers = {
             "Authorization": f"Bearer {OPENROUTER_API_KEY}",
             "Content-Type": "application/json"
         }
-        
+
         payload = {
             "model": "openai/gpt-3.5-turbo",
-            "messages": [
-                {
-                    "role": "user",
-                    "content": prompt
-                }
-            ],
+            "messages": [{"role": "user", "content": prompt}],
             "temperature": 0.7
         }
-        
+
         response = requests.post(
             "https://openrouter.ai/api/v1/chat/completions",
             headers=headers,
             json=payload,
             timeout=30
         )
-        
+
         if response.status_code == 200:
             data = response.json()
             itinerary_text = data['choices'][0]['message']['content']
-            
 
             try:
                 start_idx = itinerary_text.find('{')
@@ -200,18 +210,64 @@ def generate_itinerary_with_ai(destination, days, budget, travelers, interests):
                 return itinerary_data
             except json.JSONDecodeError:
                 return {"raw_itinerary": itinerary_text}
-        
+
         return {"error": "Failed to generate itinerary"}
-    
+
     except Exception as e:
         return {"error": f"AI service error: {str(e)}"}
 
 
+# ---------------------------------------------------------------------------
+# Weather helpers
+# ---------------------------------------------------------------------------
+
+def fetch_weather_forecast(lat, lon):
+    """Fetch 7-day daily forecast from OpenWeatherMap (free One Call API)."""
+    if not OPENWEATHER_API_KEY:
+        return []
+    try:
+        url = (
+            f"https://api.openweathermap.org/data/2.5/forecast"
+            f"?lat={lat}&lon={lon}&appid={OPENWEATHER_API_KEY}&units=metric&cnt=40"
+        )
+        resp = requests.get(url, timeout=10)
+        if resp.status_code != 200:
+            return []
+        data = resp.json()
+        # Aggregate by day (take noon reading or first of the day)
+        days_seen = {}
+        forecast = []
+        for item in data.get('list', []):
+            dt_txt = item.get('dt_txt', '')
+            day = dt_txt[:10]
+            if day not in days_seen:
+                days_seen[day] = True
+                forecast.append({
+                    'date': day,
+                    'temp_min': item['main']['temp_min'],
+                    'temp_max': item['main']['temp_max'],
+                    'description': item['weather'][0]['description'],
+                    'icon': item['weather'][0]['icon'],
+                    'rain': item.get('rain', {}).get('3h', 0) or 0,
+                    'wind': item.get('wind', {}).get('speed', 0),
+                })
+        return forecast[:7]
+    except Exception:
+        return []
+
+
+def weather_icon_url(icon_code):
+    return f"https://openweathermap.org/img/wn/{icon_code}@2x.png"
+
+
+# ---------------------------------------------------------------------------
+# Trip ticket helpers
+# ---------------------------------------------------------------------------
 
 def generate_ticket_data(trip, itinerary):
     """Generate ticket data for email and WhatsApp"""
     booking_ref = trip.generate_booking_reference()
-    
+
     ticket_data = {
         'booking_reference': booking_ref,
         'destination': trip.destination,
@@ -222,31 +278,28 @@ def generate_ticket_data(trip, itinerary):
         'duration': trip.duration_days,
         'travelers': trip.travelers,
         'total_cost': trip.formatted_budget,
-        'itinerary_summary': itinerary.get('summary', {}),
-        'daily_plans': itinerary.get('itinerary', []),
+        'itinerary_summary': itinerary.get('summary', {}) if itinerary else {},
+        'daily_plans': itinerary.get('itinerary', []) if itinerary else [],
         'booking_date': timezone.now().strftime("%Y-%m-%d %H:%M"),
         'ticket_id': f"TKT{random.randint(100000, 999999)}",
     }
     return ticket_data
 
+
 def send_ticket_email(trip, itinerary):
     """Send beautifully formatted ticket email"""
     try:
         ticket_data = generate_ticket_data(trip, itinerary)
-        
 
         html_content = render_to_string('ticket_email.html', {
             'trip': trip,
             'ticket': ticket_data,
             'itinerary': itinerary
         })
-        
 
         text_content = strip_tags(html_content)
-        
-
         subject = f"🎫 Your Travel Ticket to {trip.destination} - {ticket_data['booking_reference']}"
-        
+
         email = EmailMultiAlternatives(
             subject=subject,
             body=text_content,
@@ -254,131 +307,59 @@ def send_ticket_email(trip, itinerary):
             to=[trip.user.email],
             reply_to=[settings.DEFAULT_FROM_EMAIL]
         )
-        
         email.attach_alternative(html_content, "text/html")
-        
-
         email.send(fail_silently=False)
-        
 
         trip.is_booked = True
         trip.tickets_sent = True
         trip.save()
-        
         return True
-        
+
     except Exception as e:
         print(f"Email sending error: {e}")
         return False
 
+
 def send_whatsapp_notification(trip, itinerary):
-    """Send WhatsApp notification using FREE WhatsApp API"""
+    """Build a WhatsApp pre-fill URL (no cost, no API key)."""
     try:
         if not trip.phone_number:
             return False
-            
 
         phone_number = ''.join(filter(str.isdigit, trip.phone_number))
-        
-
         if not phone_number.startswith('91') and len(phone_number) == 10:
             phone_number = '91' + phone_number
-        
+
         ticket_data = generate_ticket_data(trip, itinerary)
-        
 
-        message = f"""🎫 *Travel Booking Confirmed!*
-
-*Booking Reference:* {ticket_data['booking_reference']}
-*Destination:* {trip.destination}
-*Travel Dates:* {trip.start_date} to {trip.end_date}
-*Duration:* {trip.duration_days} days
-*Travelers:* {trip.travelers}
-*Total Budget:* {trip.formatted_budget}
-
-Your detailed itinerary has been sent to your email: {trip.user.email}
-
-Thank you for choosing TravelPlanner! 🌍
-
-_This is an automated message. Please do not reply._"""
-        
+        message = (
+            f"🎫 *Travel Booking Confirmed!*\n\n"
+            f"*Booking Reference:* {ticket_data['booking_reference']}\n"
+            f"*Destination:* {trip.destination}\n"
+            f"*Travel Dates:* {trip.start_date} to {trip.end_date}\n"
+            f"*Duration:* {trip.duration_days} days\n"
+            f"*Travelers:* {trip.travelers}\n"
+            f"*Total Budget:* {trip.formatted_budget}\n\n"
+            f"Your detailed itinerary has been sent to: {trip.user.email}\n\n"
+            f"Thank you for choosing TravelPlanner! 🌍"
+        )
 
         encoded_message = urllib.parse.quote(message)
-        
+        return f"https://wa.me/{phone_number}?text={encoded_message}"
 
-        whatsapp_url = f"https://wa.me/{phone_number}?text={encoded_message}"
-        
-        return whatsapp_url
-        
     except Exception as e:
         print(f"WhatsApp notification error: {e}")
         return False
 
+
 def send_sms_notification(trip, itinerary):
-    """Send SMS notification - Always return True for demo"""
-    try:
-
-        print(f"SMS would be sent to: {trip.phone_number}")
-        return True
-        
-    except Exception as e:
-        print(f"SMS sending error: {e}")
-        return False
+    print(f"SMS would be sent to: {trip.phone_number}")
+    return True
 
 
-
-def book_trip_view(request, trip_id):
-    """Book trip and send notifications"""
-    if not request.user.is_authenticated:
-        return redirect('register')
-    
-    trip = get_object_or_404(Trip, id=trip_id, user=request.user)
-    
-
-    itinerary = None
-    if trip.itinerary:
-        try:
-            itinerary = json.loads(trip.itinerary)
-        except json.JSONDecodeError:
-            itinerary = {"raw_itinerary": trip.itinerary}
-    
-    if request.method == "POST":
-        try:
-
-            email_sent = send_ticket_email(trip, itinerary)
-            
-
-            whatsapp_url = send_whatsapp_notification(trip, itinerary)
-            
-
-            sms_sent = send_sms_notification(trip, itinerary)
-            
-            if email_sent:
-                messages.success(request, "🎫 Booking confirmed! Tickets sent to your email.")
-                
-                if whatsapp_url:
-                    messages.info(request, 
-                        f"📱 WhatsApp notification ready! <a href='{whatsapp_url}' target='_blank' class='alert-link'>Click here to send WhatsApp message</a>", 
-                        extra_tags='safe'
-                    )
-                
-                if sms_sent:
-                    messages.info(request, "📲 SMS notification sent to your phone.")
-                    
-            else:
-                messages.error(request, "Failed to send tickets. Please try again.")
-                
-        except Exception as e:
-            messages.error(request, f"Booking failed: {str(e)}")
-        
-        return redirect('trip_detail', trip_id=trip.id)
-    
-    return render(request, 'book_trip.html', {
-        'trip': trip,
-        'itinerary': itinerary
-    })
-
-
+# ---------------------------------------------------------------------------
+# Dashboard & trip management views
+# ---------------------------------------------------------------------------
 
 def dashboard_view(request):
     if not request.user.is_authenticated:
@@ -392,98 +373,102 @@ def dashboard_view(request):
         if form.is_valid():
             trip = form.save(commit=False)
             trip.user = request.user
-            
 
             phone_number = request.session.get('phone_number')
             if phone_number:
                 trip.phone_number = phone_number
-
-                if 'phone_number' in request.session:
-                    del request.session['phone_number']
+                request.session.pop('phone_number', None)
 
             try:
-
                 duration = (trip.end_date - trip.start_date).days
                 if duration <= 0:
                     messages.error(request, "End date must be after start date.")
                     return redirect('dashboard')
 
+                # ------ Weather (current) ------
+                weather_url = (
+                    f"https://api.openweathermap.org/data/2.5/weather"
+                    f"?q={urllib.parse.quote(trip.destination)}&appid={OPENWEATHER_API_KEY}&units=metric"
+                )
+                weather_resp = requests.get(weather_url, timeout=10)
+                lat, lon = None, None
 
-                weather_url = f"https://api.openweathermap.org/data/2.5/weather?q={trip.destination}&appid={OPENWEATHER_API}&units=metric"
-                weather_resp = requests.get(weather_url)
                 if weather_resp.status_code == 200:
                     weather_data = weather_resp.json()
                     temp = weather_data['main']['temp']
                     desc = weather_data['weather'][0]['description']
                     trip.weather = f"{temp}°C, {desc}"
+                    coord = weather_data.get('coord', {})
+                    lat = coord.get('lat')
+                    lon = coord.get('lon')
+                    if lat and lon:
+                        trip.dest_lat = lat
+                        trip.dest_lng = lon
                 else:
                     trip.weather = "Weather data not available"
 
+                # ------ 7-day forecast ------
+                if lat and lon:
+                    forecast = fetch_weather_forecast(lat, lon)
+                    trip.weather_forecast = json.dumps(forecast)
 
-                if weather_resp.status_code == 200:
-                    weather_data = weather_resp.json()
-                    coord = weather_data.get('coord', {})
-                    lat, lon = coord.get('lat'), coord.get('lon')
+                # ------ Attractions & Hotels via Geoapify ------
+                if lat and lon:
+                    attractions_url = (
+                        f"https://api.geoapify.com/v2/places"
+                        f"?categories=tourism.sights,tourism.attraction"
+                        f"&filter=circle:{lon},{lat},5000&limit=10&apiKey={GEOAPIFY_API_KEY}"
+                    )
+                    attractions_resp = requests.get(attractions_url, timeout=10)
+                    if attractions_resp.status_code == 200:
+                        features = attractions_resp.json().get('features', [])
+                        names = [f['properties'].get('name') for f in features[:5] if f['properties'].get('name')]
+                        trip.attractions = ", ".join(names) if names else "No attractions found"
 
-                    if lat and lon:
+                    hotels_url = (
+                        f"https://api.geoapify.com/v2/places"
+                        f"?categories=accommodation.hotel"
+                        f"&filter=circle:{lon},{lat},5000&limit=5&apiKey={GEOAPIFY_API_KEY}"
+                    )
+                    hotels_resp = requests.get(hotels_url, timeout=10)
+                    if hotels_resp.status_code == 200:
+                        features = hotels_resp.json().get('features', [])
+                        names = [f['properties'].get('name') for f in features[:3] if f['properties'].get('name')]
+                        trip.hotels = ", ".join(names) if names else "No hotels found"
 
-                        attractions_url = f"https://api.geoapify.com/v2/places?categories=tourism.sights,tourism.attraction&filter=circle:{lon},{lat},5000&limit=10&apiKey={GEOAPIFY_API}"
-                        attractions_resp = requests.get(attractions_url)
-                        
-                        if attractions_resp.status_code == 200:
-                            attractions_data = attractions_resp.json()
-                            features = attractions_data.get('features', [])
-                            attractions = []
-                            for feature in features[:5]:
-                                name = feature['properties'].get('name')
-                                if name:
-                                    attractions.append(name)
-                            trip.attractions = ", ".join(attractions) if attractions else "No attractions found"
+                    # ------ Distance via OSRM ------
+                    distance_url = (
+                        f"https://router.project-osrm.org/route/v1/driving/"
+                        f"77.5946,12.9716;{lon},{lat}?overview=false"
+                    )
+                    dist_resp = requests.get(distance_url, timeout=10)
+                    if dist_resp.status_code == 200:
+                        dist_data = dist_resp.json()
+                        if dist_data.get('routes'):
+                            trip.distance_km = round(dist_data['routes'][0]['distance'] / 1000, 2)
+                else:
+                    trip.attractions = "Location not found"
+                    trip.hotels = "Location not found"
 
-
-                        hotels_url = f"https://api.geoapify.com/v2/places?categories=accommodation.hotel&filter=circle:{lon},{lat},5000&limit=5&apiKey={GEOAPIFY_API}"
-                        hotels_resp = requests.get(hotels_url)
-                        
-                        if hotels_resp.status_code == 200:
-                            hotels_data = hotels_resp.json()
-                            features = hotels_data.get('features', [])
-                            hotels = []
-                            for feature in features[:3]:
-                                name = feature['properties'].get('name')
-                                if name:
-                                    hotels.append(name)
-                            trip.hotels = ", ".join(hotels) if hotels else "No hotels found"
-                    else:
-                        trip.attractions = "Location not found"
-                        trip.hotels = "Location not found"
-
-
-                    if lat and lon:
-                        distance_url = f"https://router.project-osrm.org/route/v1/driving/77.5946,12.9716;{lon},{lat}?overview=false"
-                        dist_resp = requests.get(distance_url)
-                        if dist_resp.status_code == 200:
-                            dist_data = dist_resp.json()
-                            if dist_data.get('routes'):
-                                trip.distance_km = round(dist_data['routes'][0]['distance'] / 1000, 2)
-
-
+                # ------ AI Itinerary ------
                 itinerary_data = generate_itinerary_with_ai(
                     destination=trip.destination,
                     days=duration,
                     budget=trip.budget,
                     travelers=trip.travelers,
-                    interests=trip.interests
+                    interests=trip.interests,
+                    currency=trip.currency,
                 )
-                
                 if 'error' not in itinerary_data:
                     trip.itinerary = json.dumps(itinerary_data)
                 else:
-                    trip.itinerary = "Itinerary generation failed"
+                    trip.itinerary = ""
 
+                # Ensure share slug is generated on first save
                 trip.save()
-                messages.success(request, "Trip planned successfully! You can now book and get tickets.")
-                
+                trip.generate_share_slug()
 
+                messages.success(request, "Trip planned successfully! You can now book and get tickets.")
                 return redirect('trip_detail', trip_id=trip.id)
 
             except requests.exceptions.RequestException as e:
@@ -492,96 +477,238 @@ def dashboard_view(request):
                 messages.error(request, f"Something went wrong: {e}")
 
     return render(request, 'dashboard.html', {
-        'form': form, 
-        'trips': trips, 
-        'user': request.user
+        'form': form,
+        'trips': trips,
+        'user': request.user,
+        'geoapify_api_key': settings.GEOAPIFY_API_KEY,
     })
-
 
 
 def trip_detail_view(request, trip_id):
     if not request.user.is_authenticated:
         return redirect('register')
-    
+
     trip = get_object_or_404(Trip, id=trip_id, user=request.user)
-    
+    return _render_trip_detail(request, trip, is_owner=True)
+
+
+def public_trip_view(request, share_slug):
+    """Read-only public trip view – no authentication required."""
+    trip = get_object_or_404(Trip, share_slug=share_slug)
+    invite_form = TripInviteForm()
+
+    if request.method == 'POST':
+        invite_form = TripInviteForm(request.POST)
+        if invite_form.is_valid():
+            email = invite_form.cleaned_data['email']
+            _send_invite_email(trip, email, request)
+            messages.success(request, f"Invite sent to {email}!")
+            return redirect('public_trip', share_slug=share_slug)
+
+    return _render_trip_detail(request, trip, is_owner=False, invite_form=invite_form)
+
+
+def _render_trip_detail(request, trip, is_owner, invite_form=None):
     itinerary = None
     if trip.itinerary:
         try:
             itinerary = json.loads(trip.itinerary)
         except json.JSONDecodeError:
             itinerary = {"raw_itinerary": trip.itinerary}
-    
+
+    forecast = []
+    if trip.weather_forecast:
+        try:
+            forecast = json.loads(trip.weather_forecast)
+        except json.JSONDecodeError:
+            pass
+
+    # Map forecast dates to day numbers for easy template access
+    forecast_by_date = {f['date']: f for f in forecast}
+
+    # Annotate itinerary days with forecast data + rain warnings
+    daily_plans = []
+    if itinerary and 'itinerary' in itinerary:
+        for day in itinerary['itinerary']:
+            date_str = day.get('date', '')
+            day_forecast = forecast_by_date.get(date_str)
+            rain_warning = False
+            if day_forecast and day_forecast.get('rain', 0) > 1:
+                rain_warning = True
+            # Compute day spend from activities
+            day_spend = 0
+            for act in day.get('activities', []):
+                cost = act.get('cost', 0)
+                try:
+                    day_spend += float(cost)
+                except (TypeError, ValueError):
+                    logger.debug("Could not parse activity cost %r for day %s", cost, date_str)
+            daily_plans.append({
+                'day': day,
+                'forecast': day_forecast,
+                'rain_warning': rain_warning,
+                'day_spend': day_spend,
+            })
+
+    # Budget spent calculation
+    total_spent = sum(dp['day_spend'] for dp in daily_plans)
+    budget_remaining = None
+    budget_pct = None
+    if trip.budget:
+        budget_remaining = float(trip.budget) - total_spent
+        budget_pct = min(100, round(total_spent / float(trip.budget) * 100))
+
+    # Ensure share slug exists
+    if not trip.share_slug:
+        trip.generate_share_slug()
+
     return render(request, 'trip_detail.html', {
         'trip': trip,
-        'itinerary': itinerary
+        'itinerary': itinerary,
+        'daily_plans': daily_plans,
+        'forecast': forecast,
+        'total_spent': total_spent,
+        'budget_remaining': budget_remaining,
+        'budget_pct': budget_pct,
+        'is_owner': is_owner,
+        'invite_form': invite_form or TripInviteForm(),
+        'geoapify_api_key': settings.GEOAPIFY_API_KEY,
     })
 
+
+def _send_invite_email(trip, email, request):
+    """Send an email invite with the public share link."""
+    try:
+        public_url = request.build_absolute_uri(f"/trip/share/{trip.share_slug}/")
+        subject = f"You're invited to view {trip.user.username}'s trip to {trip.destination}!"
+        message = (
+            f"Hi,\n\n"
+            f"{trip.user.username} has shared their travel itinerary with you.\n\n"
+            f"Destination: {trip.destination}\n"
+            f"Dates: {trip.start_date} – {trip.end_date}\n\n"
+            f"View the full itinerary here:\n{public_url}\n\n"
+            f"Happy travels! 🌍\n— TravelPlanner"
+        )
+        send_mail(
+            subject=subject,
+            message=message,
+            from_email=settings.DEFAULT_FROM_EMAIL,
+            recipient_list=[email],
+            fail_silently=True,
+        )
+        TripInvite.objects.create(trip=trip, email=email)
+    except Exception as e:
+        print(f"Invite email error: {e}")
+
+
+def share_trip_view(request, trip_id):
+    """Generate/retrieve share link for a trip (owner only)."""
+    if not request.user.is_authenticated:
+        return redirect('register')
+    trip = get_object_or_404(Trip, id=trip_id, user=request.user)
+    trip.generate_share_slug()
+    messages.success(request, "Share link generated!")
+    return redirect('trip_detail', trip_id=trip.id)
 
 
 def delete_trip_view(request, trip_id):
     if not request.user.is_authenticated:
         return redirect('register')
-    
+
     trip = get_object_or_404(Trip, id=trip_id, user=request.user)
-    
+
     if request.method == "POST":
         destination = trip.destination
         trip.delete()
         messages.success(request, f"Trip to {destination} deleted successfully!")
         return redirect('dashboard')
-    
+
     return render(request, 'delete_trip.html', {'trip': trip})
 
 
-
-def send_whatsapp_reminder_view(request, trip_id):
-    """Resend WhatsApp notification"""
+def book_trip_view(request, trip_id):
+    """Book trip and send notifications"""
     if not request.user.is_authenticated:
         return redirect('register')
-    
+
     trip = get_object_or_404(Trip, id=trip_id, user=request.user)
-    
+
     itinerary = None
     if trip.itinerary:
         try:
             itinerary = json.loads(trip.itinerary)
         except json.JSONDecodeError:
             itinerary = {"raw_itinerary": trip.itinerary}
-    
+
+    if request.method == "POST":
+        try:
+            email_sent = send_ticket_email(trip, itinerary)
+            whatsapp_url = send_whatsapp_notification(trip, itinerary)
+            send_sms_notification(trip, itinerary)
+
+            if email_sent:
+                messages.success(request, "🎫 Booking confirmed! Tickets sent to your email.")
+                if whatsapp_url:
+                    messages.info(
+                        request,
+                        f"📱 <a href='{whatsapp_url}' target='_blank' class='alert-link'>Click here to send WhatsApp message</a>",
+                        extra_tags='safe'
+                    )
+            else:
+                messages.error(request, "Failed to send tickets. Please try again.")
+
+        except Exception as e:
+            messages.error(request, f"Booking failed: {str(e)}")
+
+        return redirect('trip_detail', trip_id=trip.id)
+
+    return render(request, 'book_trip.html', {
+        'trip': trip,
+        'itinerary': itinerary
+    })
+
+
+def send_whatsapp_reminder_view(request, trip_id):
+    if not request.user.is_authenticated:
+        return redirect('register')
+
+    trip = get_object_or_404(Trip, id=trip_id, user=request.user)
+    itinerary = None
+    if trip.itinerary:
+        try:
+            itinerary = json.loads(trip.itinerary)
+        except json.JSONDecodeError:
+            itinerary = {"raw_itinerary": trip.itinerary}
+
     whatsapp_url = send_whatsapp_notification(trip, itinerary)
-    
     if whatsapp_url:
         messages.success(request, "WhatsApp message ready! Click the button below to send.")
         request.session['whatsapp_url'] = whatsapp_url
     else:
         messages.error(request, "Failed to generate WhatsApp message. Please check your phone number.")
-    
+
     return redirect('trip_detail', trip_id=trip.id)
 
+
 def resend_ticket_email_view(request, trip_id):
-    """Resend ticket email"""
     if not request.user.is_authenticated:
         return redirect('register')
-    
+
     trip = get_object_or_404(Trip, id=trip_id, user=request.user)
-    
     itinerary = None
     if trip.itinerary:
         try:
             itinerary = json.loads(trip.itinerary)
         except json.JSONDecodeError:
             itinerary = {"raw_itinerary": trip.itinerary}
-    
+
     email_sent = send_ticket_email(trip, itinerary)
-    
     if email_sent:
         messages.success(request, "Ticket email resent successfully!")
     else:
         messages.error(request, "Failed to resend email. Please try again.")
-    
-    return redirect('trip_detail', trip_id=trip.id)
 
+    return redirect('trip_detail', trip_id=trip.id)
 
 
 def logout_view(request):

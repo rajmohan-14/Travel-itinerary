@@ -1,3 +1,30 @@
 env/
 venv/
 .env
+
+# Node
+node_modules/
+package-lock.json
+
+# SQLite databases
+*.sqlite3
+db.sqlite3
+sqldb.sqlite3
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+
+# macOS
+.DS_Store
+
+# Static/media
+staticfiles/
+media/
+
+# IDE
+.vscode/
+.idea/
